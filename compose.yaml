@@ -1,0 +1,52 @@
+name: ticketoracle
+
+services:
+  ticketoracle:
+    build: .
+    ports:
+      - "127.0.0.1:${TICKETORACLE_PORT:-8000}:8080"
+    environment:
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      TICKETORACLE_VARIANT: ${TICKETORACLE_VARIANT:-app}
+      TICKETORACLE_REQUEST_MODE: get
+      TICKETORACLE_PORT22_TEST: ${TICKETORACLE_PORT22_TEST:-1}
+    init: true
+    read_only: true
+    tmpfs:
+      - /tmp:size=32m,mode=1777
+      - /app/runtime:size=16m,uid=10001,gid=10001,mode=0700
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/events', timeout=3).read()"]
+      interval: 15s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+
+  ticketoracle_structured:
+    build: .
+    ports:
+      - "127.0.0.1:${TICKETORACLE_STRUCTURED_PORT:-8001}:8080"
+    environment:
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      TICKETORACLE_VARIANT: ${TICKETORACLE_STRUCTURED_VARIANT:-app_hardened}
+      TICKETORACLE_REQUEST_MODE: structured
+      TICKETORACLE_PORT22_TEST: "0"
+    init: true
+    read_only: true
+    tmpfs:
+      - /tmp:size=32m,mode=1777
+      - /app/runtime:size=16m,uid=10001,gid=10001,mode=0700
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/events', timeout=3).read()"]
+      interval: 15s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
