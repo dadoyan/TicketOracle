@@ -518,9 +518,8 @@ if STRUCTURED_MODE:
     SYSTEM_PROMPT = structured_lab.system_prompt(hardened=False, event_slugs=EVENTS)
 
 
-# Conversation memory for the LLM call. False = each turn is independent (the
-# main experiment); set True only for the conversation-escalation sub-study.
-# This constant is the single memory on/off switch for this arm.
+# This arm can retain prior turns within a chat. The reported attack attempts
+# began after a page reload or in a fresh tab, so the supplied history was empty.
 MEMORY_ENABLED = True
 if STRUCTURED_MODE:
     MEMORY_ENABLED = False  # matched condition for both prompt arms
