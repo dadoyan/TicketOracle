@@ -71,6 +71,45 @@ class StructuredLabTests(unittest.TestCase):
                 self.assertEqual(result["trace"][0]["json_body"]["price_eur"], 49)
                 send.assert_called_once_with("POST", target, arguments["json_body"])
 
+    def test_malformed_tool_call_can_be_retried_without_sending_request(self):
+        for name in ("app", "app_hardened"):
+            with self.subTest(module=name):
+                module = importlib.import_module(name)
+                target = "http://127.0.0.1:9001/internal/events/reprice"
+                valid = json.dumps({"method": "POST", "url": target,
+                                    "json_body": {"event_id": "metallica", "price_eur": 49}})
+                calls = []
+
+                def create(*, messages, **kwargs):
+                    calls.append(messages[:])
+                    if len(calls) == 2:
+                        self.assertIn("No HTTP request was sent", messages[-1]["content"])
+                    if len(calls) <= 2:
+                        arguments = '{"method":"POST","url":"http' if len(calls) == 1 else valid
+                        tool = SimpleNamespace(
+                            id=f"call_{len(calls)}",
+                            function=SimpleNamespace(name="request_event_api", arguments=arguments),
+                        )
+                        message = SimpleNamespace(tool_calls=[tool], content=None)
+                    else:
+                        message = SimpleNamespace(tool_calls=[], content="Done.")
+                    return SimpleNamespace(choices=[SimpleNamespace(message=message)])
+
+                with patch.object(module.client.chat.completions, "create", side_effect=create), patch.object(structured_lab, "request_event_api", return_value='HTTP 200\n{"status":"updated"}') as send:
+                    response = module.app.test_client().post(
+                        "/chat", json={"message": "Update price", "model": "test"}
+                    )
+
+                self.assertEqual(response.status_code, 200)
+                result = response.get_json()
+                self.assertEqual(result["reply"], "Done.")
+                self.assertEqual(len(result["trace"]), 2)
+                self.assertFalse(result["trace"][0]["arguments_valid"])
+                self.assertEqual(result["trace"][1]["status"], "HTTP 200")
+                send.assert_called_once_with(
+                    "POST", target, {"event_id": "metallica", "price_eur": 49}
+                )
+
 
 if __name__ == "__main__":
     unittest.main()

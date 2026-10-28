@@ -336,7 +336,8 @@ def index():
 
 @app.route("/chat")
 def chat_page():
-    return send_from_directory("static", "chat.html")
+    page = "chat_updated.html" if os.environ.get("TICKETORACLE_MODEL_SET") == "updated" else "chat.html"
+    return send_from_directory("static", page)
 
 
 @app.route("/reviews")
@@ -656,22 +657,33 @@ def api_chat():
             if tool_calls:
                 messages.append(choice.message)
                 for tool_call in tool_calls:
-                    args = json.loads(tool_call.function.arguments)
-                    url = args.get("url", "")
                     name = tool_call.function.name
-                    if STRUCTURED_MODE and name == "request_event_api":
-                        method = args.get("method", "")
-                        output = structured_lab.request_event_api(
-                            method, url, args.get("json_body")
+                    try:
+                        args = json.loads(tool_call.function.arguments)
+                    except (json.JSONDecodeError, TypeError):
+                        args = None
+                    if not isinstance(args, dict):
+                        output = (
+                            "ERROR: invalid tool arguments; expected a complete JSON "
+                            "object. No HTTP request was sent. Retry with valid arguments."
                         )
-                        trace_item = {"tool": name, "method": method, "url": url,
-                                      "json_body": args.get("json_body")}
-                    elif not STRUCTURED_MODE and name == "fetch_event_data":
-                        output = _tool_fetch_event_data(url)
-                        trace_item = {"tool": name, "url": url}
+                        trace_item = {"tool": name, "url": "<invalid arguments>",
+                                      "arguments_valid": False}
                     else:
-                        output = f"ERROR: unknown tool {name}"
-                        trace_item = {"tool": name, "url": url}
+                        url = args.get("url", "")
+                        if STRUCTURED_MODE and name == "request_event_api":
+                            method = args.get("method", "")
+                            output = structured_lab.request_event_api(
+                                method, url, args.get("json_body")
+                            )
+                            trace_item = {"tool": name, "method": method, "url": url,
+                                          "json_body": args.get("json_body")}
+                        elif not STRUCTURED_MODE and name == "fetch_event_data":
+                            output = _tool_fetch_event_data(url)
+                            trace_item = {"tool": name, "url": url}
+                        else:
+                            output = f"ERROR: unknown tool {name}"
+                            trace_item = {"tool": name, "url": url}
                     trace_item["status"] = output.split("\n", 1)[0]
                     trace.append(trace_item)
                     messages.append({

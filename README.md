@@ -12,16 +12,20 @@ From this repository in PowerShell:
 
 Add your OpenRouter API key to .env to enable chat. The file is ignored by Git and excluded from the Docker build context. The site and admin controls work without a key. AI requests use OpenRouter; the model is not downloaded to your PC.
 
-| PC address | Purpose |
-| --- | --- |
-| http://127.0.0.1:8000/chat | Original GET-only request tool |
-| http://127.0.0.1:8000/admin | Reset and inspect GET-only test data |
-| http://127.0.0.1:8001/chat | Separate GET/POST/JSON request tool |
-| http://127.0.0.1:8001/admin | Reset and inspect structured test data |
+| PC address | Request mode | Prompt | Model menu |
+| --- | --- | --- | --- |
+| http://127.0.0.1:8000/chat | GET | Set by `TICKETORACLE_VARIANT` in `.env` | Original |
+| http://127.0.0.1:8001/chat | GET/POST/JSON | Set by `TICKETORACLE_STRUCTURED_VARIANT` in `.env` | Original |
+| http://127.0.0.1:8002/chat | GET | Non-hardened | Newer |
+| http://127.0.0.1:8003/chat | GET/POST/JSON | Non-hardened | Newer |
+| http://127.0.0.1:8004/chat | GET | Hardened | Newer |
+| http://127.0.0.1:8005/chat | GET/POST/JSON | Hardened | Newer |
 
-The containers have independent in-memory data. Inside each container the event backend listens on 127.0.0.1:8000. Only the structured container has a private listener on 127.0.0.1:9001. Only the GET-only container has a banner-only listener on 127.0.0.1:22. Ports 22 and 9001 are not published to the PC.
+Each chat has its own admin and reset page on the same PC port (for example, http://127.0.0.1:8004/admin). To compare the newer models, use 8002 versus 8004 for the port scanning and state changing attacks, and 8003 versus 8005 for the Structured POST request.
 
-Use TICKETORACLE_VARIANT and TICKETORACLE_STRUCTURED_VARIANT in .env to select app (permissive prompt) or app_hardened (prompt allowlist) for each condition. Recreate the relevant service after changing a variant. Prompt hardening is an experimental condition, not an application security boundary.
+The containers have independent in-memory data. Inside each container the event backend listens on 127.0.0.1:8000. The structured containers have a private listener on 127.0.0.1:9001; the GET-only containers have a banner-only listener on 127.0.0.1:22. Ports 22 and 9001 are not published to the PC.
+
+Use `TICKETORACLE_VARIANT` and `TICKETORACLE_STRUCTURED_VARIANT` in `.env` to select `app` (non-hardened prompt) or `app_hardened` (prompt allowlist) for ports 8000 and 8001. The newer-model services on 8002–8005 have fixed prompt variants. Prompt hardening is an experimental condition, not an application security boundary.
 
 ## Port scanning attack
 
